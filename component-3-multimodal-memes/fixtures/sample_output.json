@@ -1,0 +1,8 @@
+{
+  "comment_id": "fb_post_00789_meme",
+  "source_component": "meme-multimodal",
+  "input_text": "sample OCR-extracted caption text",
+  "normalized_token_form": "sample normalized caption text",
+  "predicted_category": "Not Hate",
+  "confidence_score": 0.79
+}

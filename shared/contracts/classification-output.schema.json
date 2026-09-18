@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Classification Output",
+  "description": "Per-comment output published by tamil-english, sinhala-english, and meme-multimodal. sna-moderation consumes this and joins it (by comment_id) against the interaction graph it builds independently via DOM capture.",
+  "type": "object",
+  "required": [
+    "comment_id",
+    "source_component",
+    "input_text",
+    "predicted_category",
+    "confidence_score"
+  ],
+  "properties": {
+    "comment_id": {
+      "type": "string"
+    },
+    "source_component": {
+      "type": "string",
+      "enum": ["tamil-english", "sinhala-english", "meme-multimodal"]
+    },
+    "input_text": {
+      "type": "string"
+    },
+    "normalized_token_form": {
+      "type": ["string", "null"]
+    },
+    "predicted_category": {
+      "type": "string",
+      "enum": [
+        "Racial/Ethnic",
+        "Religious",
+        "Political",
+        "Gender-Based",
+        "Sexual Orientation",
+        "Not Hate"
+      ]
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,8 @@
+{
+  "comment_id": "fb_cmt_00123",
+  "source_component": "tamil-english",
+  "input_text": "intha update romba nalla iruku thanks",
+  "normalized_token_form": "intha update romba nalla irukku thanks",
+  "predicted_category": "Not Hate",
+  "confidence_score": 0.91
+}
