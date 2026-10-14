@@ -3,6 +3,7 @@
   "name": "SNA Moderation (Research Prototype)",
   "version": "0.1.0",
   "description": "Captures public Facebook comment threads and builds an interaction graph for hate-speech moderation research.",
+  "permissions": ["storage"],
   "host_permissions": ["https://www.facebook.com/*"],
   "content_scripts": [
     {
