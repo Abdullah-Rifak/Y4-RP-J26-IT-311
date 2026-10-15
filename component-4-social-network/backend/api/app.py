@@ -11,9 +11,7 @@ from pydantic import BaseModel
 from api import service
 from fastapi.responses import RedirectResponse
 
-@app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse("/docs")
+
 
 app = FastAPI(title="SNA moderation API (research prototype)")
 app.add_middleware(
@@ -22,7 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/docs")
 
 class IngestBody(BaseModel):
     capture: dict  # the anonymised JSON from Alt+Shift+J
