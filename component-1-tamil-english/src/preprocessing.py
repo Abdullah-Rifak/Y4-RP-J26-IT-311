@@ -11,7 +11,7 @@ def clean_comment(text: str) -> str:
     text = re.sub(r"<[^>]+>", " ", text)
 
     # Remove URLs
-    text = re.sub(r"https?://\S+|www\.\S+", " ", text)
+    text = re.sub(r"https?://\S+|(?<!\w)www\.\S+", " ", text, flags=re.IGNORECASE)
 
     # Normalize repeated whitespace
     text = re.sub(r"\s+", " ", text).strip()
