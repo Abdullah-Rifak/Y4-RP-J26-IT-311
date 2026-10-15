@@ -1,0 +1,24 @@
+# Python virtual environment
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Environment variables and secrets
+.env
+.env.*
+
+# Model files and checkpoints
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+
+# Generated evaluation outputs
+reports/generated/
+
+# Raw datasets — keep local unless intentionally shared
+data/*.csv
