@@ -1,0 +1,4 @@
+component-4-social-network/backend/data
+# Python generated files
+__pycache__/
+*.py[cod]
