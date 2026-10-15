@@ -37,6 +37,9 @@ function extractText(article) {
   const el = article.querySelector(TEXT_SELECTOR);
   if (!el) return null; // image/GIF/sticker-only comment
   const clone = el.cloneNode(true);
+  clone.querySelectorAll("a[href]").forEach((a) => {
+    if (handleFromHref(a.href)) a.replaceWith("@USER");
+  });
   clone.querySelectorAll("img[alt]").forEach((img) => img.replaceWith(img.alt)); // emoji
   return clone.textContent.trim();
 }
@@ -164,6 +167,155 @@ function capturePost(rows) {
     media,
   };
 }
+// ---- anonymisation ----
+async function getSalt() {
+  const { sna_salt } = await chrome.storage.local.get("sna_salt");
+  if (sna_salt) return sna_salt;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const salt = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  await chrome.storage.local.set({ sna_salt: salt });
+  return salt;
+}
+
+async function pseudonym(salt, value) {
+  if (!value) return null;
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(salt + ":" + value),
+  );
+  const hex = [...new Uint8Array(buf)]
+    .slice(0, 8)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return "u_" + hex;
+}
+
+// A reply only knows its target by display name. Resolve it to a handle by looking
+// only inside the same thread, so two people with the same name elsewhere can't clash.
+function resolveReplyTarget(row, rows) {
+  if (row.type !== "reply" || !row.thread_root_id)
+    return { handle: null, ambiguous: false };
+  const handles = new Set();
+  for (const r of rows) {
+    const inThread =
+      r.comment_id === row.thread_root_id ||
+      r.thread_root_id === row.thread_root_id;
+    if (
+      inThread &&
+      r.comment_id !== row.comment_id &&
+      r.author === row.reply_to
+    )
+      handles.add(r.author_handle);
+  }
+  if (handles.size === 1) return { handle: [...handles][0], ambiguous: false };
+  return { handle: null, ambiguous: handles.size > 1 }; // 0 = target not captured (e.g. collapsed)
+}
+// ---- expansion ----
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// "View 3 more replies", "View 1 reply", "View more comments", "View previous comments",
+// plus "See more" but only inside a comment (not the post text).
+function findExpanders() {
+  const found = [];
+  document
+    .querySelectorAll('div[role="button"], span[role="button"]')
+    .forEach((el) => {
+      const label = (el.textContent || "").trim();
+      if (!label || label.length > 60) return;
+      if (
+        /^view (?:all )?\d*\s*(?:more |previous )?(?:repl(?:y|ies)|comments?)/i.test(
+          label,
+        )
+      ) {
+        found.push({ el, label });
+      } else if (/^see more$/i.test(label)) {
+        const art = el.closest('div[role="article"][aria-label]');
+        if (art && parseLabel(art.getAttribute("aria-label")))
+          found.push({ el, label });
+      }
+    });
+  return found;
+}
+
+let expanding = false;
+async function expandAll({ maxRounds = 15, delayMs = 1200 } = {}) {
+  if (expanding) return;
+  expanding = true;
+  const clicked = new WeakSet(); // never click the same button twice
+  let total = 0;
+  for (let round = 1; round <= maxRounds; round++) {
+    const targets = findExpanders().filter(({ el }) => !clicked.has(el));
+    if (!targets.length) break;
+    console.log(
+      `[SNA] expand round ${round}: ${targets.length} button(s)`,
+      targets.map((t) => t.label),
+    );
+    for (const { el } of targets) {
+      clicked.add(el);
+      el.click();
+      total++;
+      await sleep(300 + Math.random() * 400);
+    }
+    await sleep(delayMs); // let Facebook load the new replies
+  }
+  const rows = captureComments();
+  const users = new Set(rows.map((r) => r.author_handle)).size;
+  console.log(
+    `[SNA] expansion done: clicked ${total}; ${rows.length} comments, ${users} unique users (target: 15+ comments, 5+ users)`,
+  );
+  expanding = false;
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.altKey && e.shiftKey && e.code === "KeyE") expandAll();
+});
+async function anonymise(rows) {
+  const salt = await getSalt();
+  const out = [];
+  for (const r of rows) {
+    const target = resolveReplyTarget(r, rows);
+    out.push({
+      comment_id: r.comment_id,
+      post_id: r.post_id,
+      type: r.type,
+      thread_root_id: r.thread_root_id,
+      author_id: await pseudonym(salt, r.author_handle),
+      reply_to_id: await pseudonym(salt, target.handle),
+      reply_to_ambiguous: target.ambiguous,
+      mentions: await Promise.all(r.mentions.map((h) => pseudonym(salt, h))),
+      text: r.text,
+      media: r.media,
+    });
+  }
+  return out;
+}
+
+document.addEventListener("keydown", async (e) => {
+  if (e.altKey && e.shiftKey && e.code === "KeyJ") {
+    const rows = captureComments();
+    const post = capturePost(rows);
+    const comments = await anonymise(rows);
+    const json = JSON.stringify(
+      {
+        post_id: post.post_id,
+        captured_at: new Date().toISOString(),
+        post_media: post.media,
+        comments,
+      },
+      null,
+      2,
+    );
+    try {
+      await navigator.clipboard.writeText(json);
+      console.log(
+        `[SNA] copied anonymised JSON (${comments.length} comments) to clipboard`,
+      );
+    } catch (err) {
+      console.warn("[SNA] clipboard blocked, printing instead", err);
+      console.log(json);
+    }
+  }
+});
 
 // Alt+Shift+C runs a capture. A shortcut is needed because content scripts run in an
 // isolated world, so window functions aren't callable from the DevTools console.
@@ -186,4 +338,4 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-console.log("[SNA] content script loaded. Press Alt+Shift+C to capture.");
+console.log("[SNA] loaded. Alt+Shift+E expand, Alt+Shift+C inspect, Alt+Shift+J copy JSON.");
