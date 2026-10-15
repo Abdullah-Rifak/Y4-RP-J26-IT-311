@@ -1,3 +1,6 @@
 component-4-social-network/backend/data
 component-4-social-network/dashboard/.vite
 component-4-social-network/dashboard/node_modules
+# Python generated files
+__pycache__/
+*.py[cod]
