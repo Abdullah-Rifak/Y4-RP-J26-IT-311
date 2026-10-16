@@ -24,3 +24,11 @@ def test_preserves_tamil_and_english():
 def test_handles_empty_input():
     assert clean_comment("") == ""
 
+def test_removes_www_url():
+    assert clean_comment("Visit www.google.com now") == "Visit now"
+
+
+def test_preserves_expressive_www_words():
+    comment = "Yowww.. Dawww... wowwwww nice"
+    assert clean_comment(comment) == comment
+    
