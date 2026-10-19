@@ -4,7 +4,7 @@ from collections import Counter
 
 # Locate the dataset relative to this script
 project_dir = Path(__file__).resolve().parent.parent
-dataset_path = project_dir / "data" / "tamil_offensive_full_dev.csv"
+dataset_path = Path(r"C:\Users\Almeda\Desktop\Y4\RP\Test Data\New folder\DravidianCodeMix\tamil_offensive_full_train.csv")
 
 # Read the tab-separated file; it has no header row
 with dataset_path.open("r", encoding="utf-8-sig", newline="") as file:
