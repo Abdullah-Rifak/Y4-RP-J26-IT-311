@@ -2,12 +2,20 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+import hashlib
 
 import support
 from api import service
 from escalation import review
 
-
+def snapshot(root):
+    """Return {relative path: content hash} for everything under root."""
+    if not root.exists():
+        return {}
+    return {
+        str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else "<dir>"
+        for p in sorted(root.rglob("*"))
+    }
 class ServiceTests(unittest.TestCase):
     """Runs the service against a throwaway folder, never the real data/captures."""
 
@@ -92,9 +100,10 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(service.get_justification("u_syn_h")["review_status"], "changed_since_review")
 
     def test_real_data_folder_is_untouched(self):
+        before = snapshot(support.DATA)
         service.ingest(self.t1, self.c1)
         service.record_decision("u_syn_a", "accept", "m1")
-        self.assertFalse((support.DATA / "captures").exists())
+        self.assertEqual(snapshot(support.DATA), before)
 
 
 if __name__ == "__main__":
