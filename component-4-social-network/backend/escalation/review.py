@@ -17,18 +17,19 @@ _lock = threading.Lock()
 
 
 # ---- the log ----
-def read_log(path: Path = LOG_PATH) -> list[dict]:
+def read_log(path: Path | None = None) -> list[dict]:
+    path = path or LOG_PATH
     if not path.exists():
         return []
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def decisions_for(user: str, path: Path = LOG_PATH) -> list[dict]:
+def decisions_for(user: str, path: Path | None = None) -> list[dict]:
     return [d for d in read_log(path) if d["user"] == user]
 
 
-def review_status(user: str, risk: float, path: Path = LOG_PATH) -> str:
+def review_status(user: str, risk: float, path: Path | None = None) -> str:
     """pending: never reviewed. reviewed: up to date. changed_since_review: risk has
     gone up since the moderator last looked, so it needs another look."""
     ds = decisions_for(user, path)
@@ -37,7 +38,8 @@ def review_status(user: str, risk: float, path: Path = LOG_PATH) -> str:
     return "changed_since_review" if risk > ds[-1]["risk"] else "reviewed"
 
 
-def append_decision(entry: dict, path: Path = LOG_PATH) -> None:
+def append_decision(entry: dict, path: Path | None = None) -> None:
+    path = path or LOG_PATH
     with _lock:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
