@@ -337,5 +337,53 @@ document.addEventListener("keydown", (e) => {
     );
   }
 });
+// ---- send to the API (Alt+Shift+U) ----
+async function buildCapture() {
+  const rows = captureComments();
+  const post = capturePost(rows);
+  const comments = await anonymise(rows);
+  return {
+    post_id: post.post_id,
+    captured_at: new Date().toISOString(),
+    post_media: post.media,
+    comments,
+  };
+}
 
-console.log("[SNA] loaded. Alt+Shift+E expand, Alt+Shift+C inspect, Alt+Shift+J copy JSON.");
+function describeResult(res) {
+  if (!res) return "no answer from the extension's background worker";
+  if (res.error) return res.error;
+  if (!res.ok) {
+    const detail =
+      res.body && res.body.detail
+        ? JSON.stringify(res.body.detail)
+        : "no details";
+    return `the API refused it (${res.status}): ${detail}`;
+  }
+  const b = res.body;
+  return `sent post ${b.post_id}: ${b.comments} comments, ${b.unclassified} waiting for a label, ${b.users_flagged} user(s) flagged`;
+}
+
+document.addEventListener("keydown", async (e) => {
+  if (!(e.altKey && e.shiftKey && e.code === "KeyU")) return;
+  const capture = await buildCapture();
+  chrome.runtime.sendMessage(
+    { type: "sna-capture", payload: capture },
+    (res) => {
+      if (chrome.runtime.lastError) {
+        console.warn(
+          "[SNA] could not reach the extension worker (reload the Facebook tab):",
+          chrome.runtime.lastError.message,
+        );
+        return;
+      }
+      (res && res.ok ? console.log : console.warn)(
+        `[SNA] ${describeResult(res)}`,
+      );
+    },
+  );
+});
+
+console.log(
+  "[SNA] loaded. Alt+Shift+E expand, Alt+Shift+C inspect, Alt+Shift+J copy JSON.",
+);

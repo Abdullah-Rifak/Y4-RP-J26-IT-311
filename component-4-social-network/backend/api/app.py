@@ -10,7 +10,8 @@ from pydantic import BaseModel
 
 from api import service
 from fastapi.responses import RedirectResponse
-
+from fastapi import Body, FastAPI, HTTPException      # (add Body to the existing fastapi import)
+from api import live, service 
 
 
 app = FastAPI(title="SNA moderation API (research prototype)")
@@ -73,3 +74,17 @@ def decisions(user_id: str):
 @app.post("/users/{user_id}/decisions")
 def decide(user_id: str, body: DecisionBody):
     return _call(service.record_decision, user_id, body.decision, body.reviewer, body.note, body.final_tier)
+
+@app.post("/capture")
+def capture(payload: dict = Body(...)):
+    return _call(live.store_capture, payload)
+
+
+@app.post("/classifications")
+def classifications(records: list[dict] = Body(...)):
+    return _call(live.add_classifications, records)
+
+
+@app.get("/pending")
+def pending(kind: str | None = None, source: str | None = None, limit: int = 100):
+    return _call(live.pending, kind, source, limit)
